@@ -39,6 +39,7 @@ import openfl.filters.ShaderFilter;
 import openfl.media.Sound;
 import openfl.utils.Assets;
 import sys.io.File;
+import openfl.utils.Assets as OpenFlAssets;
 
 using StringTools;
 
@@ -339,6 +340,10 @@ class PlayState extends MusicBeatState
 		dialogueHUD.bgColor.alpha = 0;
 		FlxG.cameras.add(dialogueHUD);
 
+		#if android
+		addAndroidControls();
+		#end
+			
 		//
 		keysArray = [
 			copyKey(Init.gameControls.get('LEFT')[0]),
@@ -667,7 +672,7 @@ class PlayState extends MusicBeatState
 			var lerpVal = (elapsed * 2.4) * cameraSpeed;
 			camFollowPos.setPosition(FlxMath.lerp(camFollowPos.x, camFollow.x, lerpVal), FlxMath.lerp(camFollowPos.y, camFollow.y, lerpVal));
 
-			var easeLerp = 1 - Main.framerateAdjust(0.05);
+			var easeLerp = 0.95;
 			// camera stuffs
 			FlxG.camera.zoom = FlxMath.lerp(defaultCamZoom + forceZoom[0], FlxG.camera.zoom, easeLerp);
 			for (hud in allUIs)
@@ -681,8 +686,7 @@ class PlayState extends MusicBeatState
 			// Controls
 
 			// RESET = Quick Game Over Screen
-			if (controls.RESET && !startingSong && !isStoryMode)
-			{
+			if (controls.RESET && !startingSong && !isStoryMode) {
 				health = 0;
 			}
 
@@ -725,9 +729,19 @@ class PlayState extends MusicBeatState
 	// maybe theres a better place to put this, idk -saw
 	function controllerInput()
 	{
-		var justPressArray:Array<Bool> = [controls.LEFT_P, controls.DOWN_P, controls.UP_P, controls.RIGHT_P];
+		var justPressArray:Array<Bool> = [
+			controls.LEFT_P,
+			controls.DOWN_P,
+			controls.UP_P,
+			controls.RIGHT_P
+		];
 
-		var justReleaseArray:Array<Bool> = [controls.LEFT_R, controls.DOWN_R, controls.UP_R, controls.RIGHT_R];
+		var justReleaseArray:Array<Bool> = [
+			controls.LEFT_R,
+			controls.DOWN_R,
+			controls.UP_R,
+			controls.RIGHT_R
+		];
 
 		if (justPressArray.contains(true))
 		{
@@ -918,7 +932,8 @@ class PlayState extends MusicBeatState
 		// reset bf's animation
 		var holdControls:Array<Bool> = [controls.LEFT, controls.DOWN, controls.UP, controls.RIGHT];
 		if ((boyfriend != null && boyfriend.animation != null)
-			&& (boyfriend.holdTimer > Conductor.stepCrochet * (4 / 1000) && (!holdControls.contains(true) || boyfriendStrums.autoplay)))
+			&& (boyfriend.holdTimer > Conductor.stepCrochet * (4 / 1000)
+				&& (!holdControls.contains(true) || boyfriendStrums.autoplay)))
 		{
 			if (boyfriend.animation.curAnim.name.startsWith('sing') && !boyfriend.animation.curAnim.name.endsWith('miss'))
 				boyfriend.dance();
@@ -1157,6 +1172,7 @@ class PlayState extends MusicBeatState
 		//
 	}
 
+
 	public function pauseGame()
 	{
 		// pause discord rpc
@@ -1168,19 +1184,6 @@ class PlayState extends MusicBeatState
 		// update drawing stuffs
 		persistentUpdate = false;
 		persistentDraw = true;
-
-		// stop all tweens and timers
-		FlxTimer.globalManager.forEach(function(tmr:FlxTimer)
-		{
-			if (!tmr.finished)
-				tmr.active = false;
-		});
-
-		FlxTween.globalManager.forEach(function(twn:FlxTween)
-		{
-			if (!twn.finished)
-				twn.active = false;
-		});
 
 		// open pause substate
 		openSubState(new PauseSubState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
@@ -1195,8 +1198,7 @@ class PlayState extends MusicBeatState
 
 	override public function onFocusLost():Void
 	{
-		if (canPause && !paused && !Init.trueSettings.get('Auto Pause'))
-			pauseGame();
+		if (canPause && !paused && !Init.trueSettings.get('Auto Pause')) pauseGame();
 		super.onFocusLost();
 	}
 
@@ -1272,8 +1274,8 @@ class PlayState extends MusicBeatState
 		for (scoreInt in 0...stringArray.length)
 		{
 			// numScore.loadGraphic(Paths.image('UI/' + pixelModifier + 'num' + stringArray[scoreInt]));
-			var numScore = ForeverAssets.generateCombo('combo', stringArray[scoreInt], (!negative ? allSicks : false), assetModifier, changeableSkin, 'UI',
-				negative, createdColor, scoreInt);
+			var numScore = ForeverAssets.generateCombo('combo', stringArray[scoreInt], (!negative ? allSicks : false), assetModifier, changeableSkin,
+				'UI', negative, createdColor, scoreInt);
 			add(numScore);
 			// hardcoded lmao
 			if (!Init.trueSettings.get('Simply Judgements'))
@@ -1511,7 +1513,8 @@ class PlayState extends MusicBeatState
 
 	private function charactersDance(curBeat:Int)
 	{
-		if ((curBeat % gfSpeed == 0) && ((gf.animation.curAnim.name.startsWith("idle") || gf.animation.curAnim.name.startsWith("dance"))))
+		if ((curBeat % gfSpeed == 0)
+			&& ((gf.animation.curAnim.name.startsWith("idle") || gf.animation.curAnim.name.startsWith("dance"))))
 			gf.dance();
 
 		if ((boyfriend.animation.curAnim.name.startsWith("idle") || boyfriend.animation.curAnim.name.startsWith("dance"))
@@ -1572,9 +1575,7 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (curSong.toLowerCase() == 'milf'
-			&& curBeat >= 168
-			&& curBeat < 200
+		if (curSong.toLowerCase() == 'milf' && curBeat >= 168 && curBeat < 200
 			&& !Init.trueSettings.get('Reduced Movements')
 			&& FlxG.camera.zoom < 1.35)
 		{
@@ -1612,6 +1613,10 @@ class PlayState extends MusicBeatState
 				vocals.pause();
 				//	trace('nulled song finished');
 			}
+
+			// trace('ui shit break');
+			if ((startTimer != null) && (!startTimer.finished))
+				startTimer.active = false;
 		}
 
 		// trace('open substate');
@@ -1626,19 +1631,8 @@ class PlayState extends MusicBeatState
 			if (songMusic != null && !startingSong)
 				resyncVocals();
 
-			// resume all tweens and timers
-			FlxTimer.globalManager.forEach(function(tmr:FlxTimer)
-			{
-				if (!tmr.finished)
-					tmr.active = true;
-			});
-
-			FlxTween.globalManager.forEach(function(twn:FlxTween)
-			{
-				if (!twn.finished)
-					twn.active = true;
-			});
-
+			if ((startTimer != null) && (!startTimer.finished))
+				startTimer.active = true;
 			paused = false;
 
 			///*
@@ -1842,7 +1836,7 @@ class PlayState extends MusicBeatState
 		{
 			startedCountdown = false;
 
-			dialogueBox = DialogueBox.createDialogue(sys.io.File.getContent(dialogPath));
+			dialogueBox = DialogueBox.createDialogue(OpenFlAssets.getText(dialogPath));
 			dialogueBox.cameras = [dialogueHUD];
 			dialogueBox.whenDaFinish = startCountdown;
 
